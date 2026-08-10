@@ -1,30 +1,132 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:expensely_app/core/navigation/app_router.dart';
 import 'package:expensely_app/main.dart';
 
+/// Mimics a typical phone viewport (rather than the 800x600 default test
+/// surface) so scrollable auth forms lay out realistically.
+void _usePhoneViewport(WidgetTester tester) {
+  tester.view.physicalSize = const Size(390, 844);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+}
+
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('navigates through all 5 auth screens without runtime errors', (
+    WidgetTester tester,
+  ) async {
+    _usePhoneViewport(tester);
+    await tester.pumpWidget(const ProviderScope(child: MyApp()));
+    await tester.pumpAndSettle();
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // Onboarding screen is shown first.
+    expect(find.text('Skip'), findsOneWidget);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    // Skip -> Login.
+    await tester.tap(find.text('Skip'));
+    await tester.pumpAndSettle();
+    expect(find.text('Bon retour'), findsOneWidget);
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Login -> Register via footer link.
+    await tester.ensureVisible(find.text("S'inscrire"));
+    await tester.tap(find.text("S'inscrire"));
+    await tester.pumpAndSettle();
+    expect(find.text('Créer un compte'), findsOneWidget);
+
+    // Register -> Login via footer link.
+    await tester.ensureVisible(find.text('Se connecter'));
+    await tester.tap(find.text('Se connecter'));
+    await tester.pumpAndSettle();
+    expect(find.text('Bon retour'), findsOneWidget);
+
+    // Login -> Forgot password.
+    await tester.tap(find.text('Mot de passe oublié ?'));
+    await tester.pumpAndSettle();
+    expect(find.text('Envoyer le lien'), findsOneWidget);
+
+    // Forgot password -> back to Login.
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    expect(find.text('Bon retour'), findsOneWidget);
+  });
+
+  testWidgets('onboarding "Suivant" paginates through slides to Get Started', (
+    WidgetTester tester,
+  ) async {
+    _usePhoneViewport(tester);
+    await tester.pumpWidget(const ProviderScope(child: MyApp()));
+    router.go('/onboarding');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Suivre ses dépenses facilement'), findsOneWidget);
+
+    await tester.tap(find.text('Suivant'));
+    await tester.pumpAndSettle();
+    expect(find.text('Visualiser ses dépenses par catégorie'), findsOneWidget);
+
+    await tester.tap(find.text('Suivant'));
+    await tester.pumpAndSettle();
+    expect(find.text('Atteindre ses objectifs financiers'), findsOneWidget);
+    expect(find.text('Get Started'), findsOneWidget);
+
+    await tester.tap(find.text('Get Started'));
+    await tester.pumpAndSettle();
+    expect(find.text('Bon retour'), findsOneWidget);
+  });
+
+  testWidgets('reset password screen renders when reached with a token', (
+    WidgetTester tester,
+  ) async {
+    _usePhoneViewport(tester);
+    await tester.pumpWidget(const ProviderScope(child: MyApp()));
+    await tester.pumpAndSettle();
+
+    router.go('/reset-password?token=abc123');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Réinitialiser le mot de passe'), findsWidgets);
+    expect(find.text('Nouveau mot de passe'), findsOneWidget);
+  });
+
+  testWidgets('login form shows validation errors for empty input', (
+    WidgetTester tester,
+  ) async {
+    _usePhoneViewport(tester);
+    await tester.pumpWidget(const ProviderScope(child: MyApp()));
+    await tester.pumpAndSettle();
+
+    router.go('/login');
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Se connecter'));
+    await tester.pumpAndSettle();
+
+    expect(find.text("L'email est requis"), findsOneWidget);
+    expect(find.text('Le mot de passe est requis'), findsOneWidget);
+  });
+
+  testWidgets('forgot password shows a confirmation after sending', (
+    WidgetTester tester,
+  ) async {
+    _usePhoneViewport(tester);
+    await tester.pumpWidget(const ProviderScope(child: MyApp()));
+    await tester.pumpAndSettle();
+
+    router.go('/forgot-password');
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextFormField), 'test@example.com');
+    await tester.tap(find.text('Envoyer le lien'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        'Email envoyé ! Vérifiez votre boîte de réception pour continuer.',
+      ),
+      findsOneWidget,
+    );
   });
 }

@@ -3,12 +3,12 @@
 Work order for the authentication feature, from UI design through real
 backend wiring.
 
-- [ ] Design: reusable widgets (AuthTextField, AuthButton, GoogleSignInButton, AuthDivider, AuthFooterLink, OnboardingSlide, AuthScreenScaffold)
-- [ ] Design: onboarding screen (3 slides)
-- [ ] Design: login screen
-- [ ] Design: register screen
-- [ ] Design: forgot password screen
-- [ ] Design: reset password screen
+- [x] Design: reusable widgets (AuthTextField, AuthButton, GoogleSignInButton, AuthDivider, AuthFooterLink, OnboardingSlide, AuthScreenScaffold)
+- [x] Design: onboarding screen (3 slides)
+- [x] Design: login screen
+- [x] Design: register screen
+- [x] Design: forgot password screen
+- [x] Design: reset password screen
 - [ ] Backend: add password field + Spring Security + JWT to expensely-api
 - [ ] Backend: Google OAuth2 endpoint
 - [ ] Backend: forgot/reset password flow (email)
