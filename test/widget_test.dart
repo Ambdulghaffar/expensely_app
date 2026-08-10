@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:expensely_app/core/navigation/app_router.dart';
@@ -129,4 +130,38 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets(
+    'Google button renders the real SVG logo, footer links expose a click cursor',
+    (WidgetTester tester) async {
+      _usePhoneViewport(tester);
+      await tester.pumpWidget(const ProviderScope(child: MyApp()));
+
+      // Login: Google SVG logo present and footer link has a click cursor.
+      router.go('/login');
+      await tester.pumpAndSettle();
+      expect(find.byType(SvgPicture), findsOneWidget);
+
+      final loginLinkCursor = tester.widget<MouseRegion>(
+        find.ancestor(
+          of: find.text("S'inscrire"),
+          matching: find.byType(MouseRegion),
+        ),
+      );
+      expect(loginLinkCursor.cursor, SystemMouseCursors.click);
+
+      // Register: Google SVG logo present and footer link has a click cursor.
+      router.go('/register');
+      await tester.pumpAndSettle();
+      expect(find.byType(SvgPicture), findsOneWidget);
+
+      final registerLinkCursor = tester.widget<MouseRegion>(
+        find.ancestor(
+          of: find.text('Se connecter'),
+          matching: find.byType(MouseRegion),
+        ),
+      );
+      expect(registerLinkCursor.cursor, SystemMouseCursors.click);
+    },
+  );
 }
