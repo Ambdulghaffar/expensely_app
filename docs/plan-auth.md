@@ -13,6 +13,6 @@ backend wiring.
 - [ ] Backend: Google OAuth2 endpoint
 - [ ] Backend: forgot/reset password flow (email)
 - [ ] Flutter: wire real API calls (register, login, forgot/reset password)
-- [ ] Flutter: Google Sign-In real integration
-- [ ] Flutter: JWT storage (flutter_secure_storage) + auto-attach to Dio requests
-- [ ] Flutter: route guard (redirect unauthenticated users to /login)
+- [x] Flutter: Google Sign-In real integration
+- [x] Flutter: auto-attach Firebase ID token to Dio requests
+- [x] Flutter: route guard (redirect unauthenticated users to /login)

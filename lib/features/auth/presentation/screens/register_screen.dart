@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/validators.dart';
+import '../providers/auth_provider.dart';
 import '../widgets/auth_button.dart';
 import '../widgets/auth_divider.dart';
 import '../widgets/auth_footer_link.dart';
@@ -9,20 +11,19 @@ import '../widgets/auth_screen_scaffold.dart';
 import '../widgets/auth_text_field.dart';
 import '../widgets/google_sign_in_button.dart';
 
-class RegisterScreen extends StatefulWidget {
+class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
 
   @override
-  State<RegisterScreen> createState() => _RegisterScreenState();
+  ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -33,16 +34,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  Future<void> _onRegisterPressed() async {
+  void _onRegisterPressed() {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 800));
-    if (!mounted) return;
-    setState(() => _isLoading = false);
+    ref.read(authControllerProvider.notifier).signUp(
+      email: _emailController.text.trim(),
+      password: _passwordController.text,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AsyncValue<void>>(authControllerProvider, (previous, next) {
+      final error = next.error;
+      if (error != null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
+      }
+    });
+    final isLoading = ref.watch(authControllerProvider).isLoading;
+
     return AuthScreenScaffold(
       child: SingleChildScrollView(
         child: Form(
@@ -104,13 +115,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 24),
               AuthButton(
                 label: "S'inscrire",
-                isLoading: _isLoading,
+                isLoading: isLoading,
                 onPressed: _onRegisterPressed,
               ),
               const SizedBox(height: 24),
               const AuthDivider(),
               const SizedBox(height: 24),
-              GoogleSignInButton(onPressed: () {}),
+              GoogleSignInButton(
+                onPressed: () =>
+                    ref.read(authControllerProvider.notifier).signInWithGoogle(),
+              ),
               const SizedBox(height: 32),
               AuthFooterLink(
                 text: 'Déjà un compte ? ',

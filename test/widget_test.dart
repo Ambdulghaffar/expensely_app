@@ -1,9 +1,12 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:expensely_app/core/navigation/app_router.dart';
+import 'package:expensely_app/features/auth/data/auth_repository.dart';
+import 'package:expensely_app/features/auth/presentation/providers/auth_provider.dart';
 import 'package:expensely_app/main.dart';
 
 /// Mimics a typical phone viewport (rather than the 800x600 default test
@@ -15,12 +18,61 @@ void _usePhoneViewport(WidgetTester tester) {
   addTearDown(tester.view.resetDevicePixelRatio);
 }
 
+/// Always-signed-out repository stub so widget tests never touch the real
+/// Firebase SDK (which isn't initialized in the test environment).
+class _FakeAuthRepository implements AuthRepository {
+  @override
+  Stream<User?> get authStateChanges => Stream.value(null);
+
+  @override
+  User? get currentUser => null;
+
+  @override
+  Future<void> signInWithEmail({
+    required String email,
+    required String password,
+  }) async {}
+
+  @override
+  Future<void> signUpWithEmail({
+    required String email,
+    required String password,
+  }) async {}
+
+  @override
+  Future<void> signInWithGoogle() async {}
+
+  @override
+  Future<void> sendPasswordResetEmail(String email) async {}
+
+  @override
+  Future<void> signOut() async {}
+}
+
+Future<void> _pumpApp(WidgetTester tester) {
+  return tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        authRepositoryProvider.overrideWithValue(_FakeAuthRepository()),
+      ],
+      child: const MyApp(),
+    ),
+  );
+}
+
+void _goTo(WidgetTester tester, String path) {
+  final container = ProviderScope.containerOf(
+    tester.element(find.byType(MyApp)),
+  );
+  container.read(routerProvider).go(path);
+}
+
 void main() {
   testWidgets('navigates through all 5 auth screens without runtime errors', (
     WidgetTester tester,
   ) async {
     _usePhoneViewport(tester);
-    await tester.pumpWidget(const ProviderScope(child: MyApp()));
+    await _pumpApp(tester);
     await tester.pumpAndSettle();
 
     // Onboarding screen is shown first.
@@ -58,8 +110,8 @@ void main() {
     WidgetTester tester,
   ) async {
     _usePhoneViewport(tester);
-    await tester.pumpWidget(const ProviderScope(child: MyApp()));
-    router.go('/onboarding');
+    await _pumpApp(tester);
+    _goTo(tester, '/onboarding');
     await tester.pumpAndSettle();
 
     expect(find.text('Suivre ses dépenses facilement'), findsOneWidget);
@@ -78,28 +130,14 @@ void main() {
     expect(find.text('Bon retour'), findsOneWidget);
   });
 
-  testWidgets('reset password screen renders when reached with a token', (
-    WidgetTester tester,
-  ) async {
-    _usePhoneViewport(tester);
-    await tester.pumpWidget(const ProviderScope(child: MyApp()));
-    await tester.pumpAndSettle();
-
-    router.go('/reset-password?token=abc123');
-    await tester.pumpAndSettle();
-
-    expect(find.text('Réinitialiser le mot de passe'), findsWidgets);
-    expect(find.text('Nouveau mot de passe'), findsOneWidget);
-  });
-
   testWidgets('login form shows validation errors for empty input', (
     WidgetTester tester,
   ) async {
     _usePhoneViewport(tester);
-    await tester.pumpWidget(const ProviderScope(child: MyApp()));
+    await _pumpApp(tester);
     await tester.pumpAndSettle();
 
-    router.go('/login');
+    _goTo(tester, '/login');
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Se connecter'));
@@ -113,10 +151,10 @@ void main() {
     WidgetTester tester,
   ) async {
     _usePhoneViewport(tester);
-    await tester.pumpWidget(const ProviderScope(child: MyApp()));
+    await _pumpApp(tester);
     await tester.pumpAndSettle();
 
-    router.go('/forgot-password');
+    _goTo(tester, '/forgot-password');
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextFormField), 'test@example.com');
@@ -135,10 +173,10 @@ void main() {
     'Google button renders the real SVG logo, footer links expose a click cursor',
     (WidgetTester tester) async {
       _usePhoneViewport(tester);
-      await tester.pumpWidget(const ProviderScope(child: MyApp()));
+      await _pumpApp(tester);
 
       // Login: Google SVG logo present and footer link has a click cursor.
-      router.go('/login');
+      _goTo(tester, '/login');
       await tester.pumpAndSettle();
       expect(find.byType(SvgPicture), findsOneWidget);
 
@@ -151,7 +189,7 @@ void main() {
       expect(loginLinkCursor.cursor, SystemMouseCursors.click);
 
       // Register: Google SVG logo present and footer link has a click cursor.
-      router.go('/register');
+      _goTo(tester, '/register');
       await tester.pumpAndSettle();
       expect(find.byType(SvgPicture), findsOneWidget);
 

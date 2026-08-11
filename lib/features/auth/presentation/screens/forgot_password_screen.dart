@@ -1,23 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/validators.dart';
+import '../providers/auth_provider.dart';
 import '../widgets/auth_button.dart';
 import '../widgets/auth_screen_scaffold.dart';
 import '../widgets/auth_text_field.dart';
 
-class ForgotPasswordScreen extends StatefulWidget {
+class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
 
   @override
-  State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
+  ConsumerState<ForgotPasswordScreen> createState() =>
+      _ForgotPasswordScreenState();
 }
 
-class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
+class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
-  bool _isLoading = false;
   bool _emailSent = false;
 
   @override
@@ -28,17 +30,27 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   Future<void> _onSendPressed() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 800));
+    await ref
+        .read(authControllerProvider.notifier)
+        .sendPasswordReset(_emailController.text.trim());
     if (!mounted) return;
-    setState(() {
-      _isLoading = false;
-      _emailSent = true;
-    });
+    if (!ref.read(authControllerProvider).hasError) {
+      setState(() => _emailSent = true);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AsyncValue<void>>(authControllerProvider, (previous, next) {
+      final error = next.error;
+      if (error != null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
+      }
+    });
+    final isLoading = ref.watch(authControllerProvider).isLoading;
+
     return AuthScreenScaffold(
       appBar: AppBar(leading: BackButton(onPressed: () => context.go('/login'))),
       child: SingleChildScrollView(
@@ -87,7 +99,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               const SizedBox(height: 24),
               AuthButton(
                 label: 'Envoyer le lien',
-                isLoading: _isLoading,
+                isLoading: isLoading,
                 onPressed: _onSendPressed,
               ),
             ],

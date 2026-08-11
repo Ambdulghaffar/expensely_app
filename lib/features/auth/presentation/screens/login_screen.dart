@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/validators.dart';
+import '../providers/auth_provider.dart';
 import '../widgets/auth_button.dart';
 import '../widgets/auth_divider.dart';
 import '../widgets/auth_footer_link.dart';
@@ -9,18 +11,17 @@ import '../widgets/auth_screen_scaffold.dart';
 import '../widgets/auth_text_field.dart';
 import '../widgets/google_sign_in_button.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -29,16 +30,26 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  Future<void> _onLoginPressed() async {
+  void _onLoginPressed() {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 800));
-    if (!mounted) return;
-    setState(() => _isLoading = false);
+    ref.read(authControllerProvider.notifier).signIn(
+      email: _emailController.text.trim(),
+      password: _passwordController.text,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AsyncValue<void>>(authControllerProvider, (previous, next) {
+      final error = next.error;
+      if (error != null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
+      }
+    });
+    final isLoading = ref.watch(authControllerProvider).isLoading;
+
     return AuthScreenScaffold(
       child: SingleChildScrollView(
         child: Form(
@@ -86,13 +97,16 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 8),
               AuthButton(
                 label: 'Se connecter',
-                isLoading: _isLoading,
+                isLoading: isLoading,
                 onPressed: _onLoginPressed,
               ),
               const SizedBox(height: 24),
               const AuthDivider(),
               const SizedBox(height: 24),
-              GoogleSignInButton(onPressed: () {}),
+              GoogleSignInButton(
+                onPressed: () =>
+                    ref.read(authControllerProvider.notifier).signInWithGoogle(),
+              ),
               const SizedBox(height: 32),
               AuthFooterLink(
                 text: 'Pas encore de compte ? ',
